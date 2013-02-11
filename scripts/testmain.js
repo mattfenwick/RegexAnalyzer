@@ -4,8 +4,8 @@ var NEW_TESTS = [
     "test/libs/parsercombs",
     "test/app/tokens",
     "test/app/tokenizer",
-/*    'test/app/ast',
-    'test/app/parser',
+    "test/app/ast",
+/*    'test/app/parser',
     'test/app/ast_to_jstree',
 */
 ];
