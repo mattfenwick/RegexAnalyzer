@@ -7,7 +7,7 @@ See:  http://opencompany.org/download/regex-cheatsheet.pdf
     
     Phrase      :=   ( Simple  |  Compound )  Quantifier(?)
     
-    Simple      :=   char  |  digit  |  dot  |  escape  |  backref
+    Simple      :=   char  |  digit  |  dot  |  escape  |  backref  |  anchor
     
     Compound    :=   Any1  |  Any2  |  Group  |  Range
     
