@@ -13,7 +13,7 @@ See:  http://opencompany.org/download/regex-cheatsheet.pdf
     
     Quantifier  :=   ( plus  |  star  |  qmark  |  QRange )  qmark(?)
     
-    QRange      :=   openq  digit(*)  comma  digit(*)  closeq
+    QRange      :=   openq  ( ( digit(*)  comma  digit(*) )  |  digit(+) )  closeq
     
     Any1        :=   openany  circumflex(?)  Phrase(+)  closeany
     
