@@ -109,6 +109,29 @@ define(function () {
             quantifier: q
         };
     }
+    
+    var CLASSES = {
+        'd': 'digit',
+        'D': 'non-digit',
+        's': 'whitespace',
+        'S': 'non-whitespace',
+        'w': 'word character',
+        'W': 'non-word character'
+    };
+    
+    function myClass(chr, q) {
+        if(!(chr in CLASSES)) {
+            throw new Error('value error');
+        }
+        if(!isQuant(q)) {
+            throw new Error('type error');
+        }
+        return {
+            asttype: 'class',
+            value: CLASSES[chr],
+            quantifier: q
+        };
+    };
 
     function quantifier(low, high, isGreedy) {
         if(typeof low !== 'number' && low !== null) {
