@@ -8,38 +8,37 @@ define(["libs/maybeerror", "app/tokens"], function (MaybeError, Tokens) {
     }
 
     var REGEXES = [
-        ['circumflex', /^\^/], 
-        ['dollarsign', /^\$/],
-        ['plus',       /^\+/], 
-        ['star',       /^\*/],
-        ['qmark',      /^\?/], 
-        ['alt',        /^\|/],
-        ['comma',      /^\,/], 
-        ['dot',        /^\./],
-        ['dash',       /^\-/],
-        ['openq',      /^\{/],
-        ['closeq',     /^\}/],
-        ['openany',    /^\[/],
-        ['closeany',   /^\]/],
-        ['opengroup',  /^\((?:\?\:)?/], // wow, that's just '(?:' or '?'
-        ['closegroup', /^\)/],
-        ['class',      /^\\[dDsSwW]/],
-        ['anchor',     /^\\[bBaz]/],
-        ['backref',    /^\\\d+/],
-        ['char',       /^[^\^\$\+\*\?\|\,\.\{\}\[\]\(\:\)\-\=\!\<\>\\\d]/],
-        ['escape',     /^\\[\^\$\+\*\?\|\,\.\{\}\[\]\(\:\)\-\=\!\<\>\\\.ntrf]/],
-        ['digit',      /^\d/]
+        ['circumflex', /^(\^)/], 
+        ['dollarsign', /^(\$)/],
+        ['plus',       /^(\+)/], 
+        ['star',       /^(\*)/],
+        ['qmark',      /^(\?)/], 
+        ['alt',        /^(\|)/],
+        ['comma',      /^(\,)/], 
+        ['dot',        /^(\.)/],
+        ['dash',       /^(\-)/],
+        ['openq',      /^(\{)/],
+        ['closeq',     /^(\})/],
+        ['openany',    /^(\[)/],
+        ['closeany',   /^(\])/],
+        ['opengroup',  /^(\((?:\?\:)?)/], // wow, that's just '(?:' or '?'
+        ['closegroup', /^(\))/],
+        ['class',      /^\\([dDsSwW])/],
+        ['anchor',     /^\\([bBaz])/],
+        ['backref',    /^\\(\d+)/],
+        ['char',       /^([^\^\$\+\*\?\|\,\.\{\}\[\]\(\:\)\-\=\!\<\>\\\d])/],
+        ['escape',     /^\\([\^\$\+\*\?\|\,\.\{\}\[\]\(\:\)\-\=\!\<\>\\\.ntrf])/],
+        ['digit',      /^(\d)/]
     ];
     
     function nextToken(str) {
-        var i, name, re, match, chunk;
+        var i, name, re, match;
         for(i = 0; i < REGEXES.length; i++) {
             name = REGEXES[i][0];
             re = REGEXES[i][1];
             match = str.match(re);
             if ( match ) {
-                chunk = match[0];
-                return MaybeError.pure({rest: str.slice(chunk.length), token: T(name, chunk)});
+                return MaybeError.pure({rest: str.slice(match[0].length), token: T(name, match[1])});
             }
         }
         return MaybeError.error('no token matched');

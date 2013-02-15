@@ -38,23 +38,23 @@ define(["app/tokens", "app/tokenizer", "libs/maybeerror"], function (Tokens, Tze
         
         test('class, anchor, backref, char, escape, digit', function() {
             propEqual(ME.pure([
-                          T('class', '\\w'),
-                          T('anchor', '\\b'),
-                          T('backref', '\\4'),
+                          T('class', 'w'),
+                          T('anchor', 'b'),
+                          T('backref', '4'),
                           T('char', 'x'),
                           T('char', '@'),
-                          T('escape', '\\n'),
+                          T('escape', 'n'),
                           T('digit', '3')]),
                       parse("\\w\\b\\4x@\\n3"));
         });
         
         test("escapes", function() {
             propEqual(ME.pure([
-                          T('escape', '\\.'),
-                          T('escape', '\\<'),
-                          T('escape', '\\t'),
-                          T('escape', '\\$'),
-                          T('escape', '\\(')]),
+                          T('escape', '.'),
+                          T('escape', '<'),
+                          T('escape', 't'),
+                          T('escape', '$'),
+                          T('escape', '(')]),
                       parse("\\.\\<\\t\\$\\("));
         });
         
