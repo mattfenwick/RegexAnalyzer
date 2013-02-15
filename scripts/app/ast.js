@@ -1,17 +1,6 @@
 define(function () {
     "use strict";
     
-    function regex(isStart, phrases, isStop) {
-        this.type = 'regex';
-        this.isStart = isStart;
-        this.phrases = phrases;
-        this.isStop = isStop;
-    }
-    
-    function isQuant(x) {
-        return x.asttype === 'quantifier';
-    }
-    
     function isChar(x) {
         return typeof x === 'string' && x.length === 1;
     }
@@ -21,94 +10,14 @@ define(function () {
         return !isNot;
     }
 
-    function char(chr, q) {
-        if(!(isChar(chr) && isQuant(q))) {
-            throw new Error('type error');
-        }
-        return {
-            asttype: 'char',
-            value: chr,
-            quantifier: q
-        };
-    }
-
-    function dot(q) {
-        if(!isQuant(q)) {
-            throw new Error('type error');
-        }
-        return {
-            asttype: 'dot',
-            quantifier: q
-        };
-    }
-
-    function backref(int, q) {
-        if(!(typeof int === 'number' && isQuant(q))) {
-            throw new Error('type error');
-        }
-        return {
-            asttype: 'backref',
-            value: int,
-            quantifier: q
-        };
-    }
-
     var ANCHORS = {
         'a':  'start of input',
         'z':  'end of input',
         'b':  'word boundary',
-        'B':  'not a word boundary'
+        'B':  'not a word boundary',
+        '^':  'start of input',
+        '$':  'end of input'
     };
-    
-    function anchor(a, q) {
-        if(!(a in ANCHORS)) {
-            throw new Error('value error -- bad anchor');
-        }
-        if(!isQuant(q)) {
-            throw new Error('type error');
-        }
-        return {
-            asttype: 'anchor',
-            value: ANCHORS[a],
-            quantifier: q
-        };
-    }
-
-    function any(isNegated, phrases, q) {
-        if(!(typeof isNegated === 'boolean' && isArray(phrases) && isQuant(q))) {
-            throw new Error('type error');
-        }
-        return {
-            asttype: 'any',
-            isNegated: isNegated,
-            phrases: phrases,
-            quantifier: q
-        };
-    }
-
-    function group(isCapture, phrases, q) {
-        if(!(typeof isCapture === 'boolean' && isArray(phrases) && isQuant(q))) {
-            throw new Error('type error');
-        }
-        return {
-            asttype: 'group',
-            isCapture: isCapture,
-            phrases: phrases,
-            quantifier: q
-        };
-    }
-
-    function range(low, high, q) {
-        if(!(isChar(low) && isChar(high) && isQuant(q))) {
-            throw new Error('type error');
-        }
-        return {
-            asttype: 'range',
-            low: low,
-            high: high,
-            quantifier: q
-        };
-    }
     
     var CLASSES = {
         'd': 'digit',
@@ -118,21 +27,113 @@ define(function () {
         'w': 'word character',
         'W': 'non-word character'
     };
-    
-    function myClass(chr, q) {
-        if(!(chr in CLASSES)) {
-            throw new Error('value error');
-        }
-        if(!isQuant(q)) {
+
+    function regex(pattern, quantifier) {
+        if(quantifier.type !== 'quantifier') {
             throw new Error('type error');
         }
         return {
-            asttype: 'class',
-            value: CLASSES[chr],
-            quantifier: q
+            type      : 'regex',
+            pattern   : pattern,
+            quantifier: quantifier
+        };
+    }
+    
+    function any(isNegated, regexes) {
+        if(!(typeof isNegated === 'boolean' && isArray(regexes))) {
+            throw new Error('type error');
+        }
+        return {
+            type     : 'pattern',
+            pattype  : 'any',
+            isNegated: isNegated,
+            regexes  : regexes
+        };
+    }
+
+    function sequence(regexes) {
+        return {
+            type   : 'pattern',
+            pattype: 'sequence',
+            regexes: regexes
+        };
+    }
+    
+    function group(isCapture, regex) {
+        if(!(typeof isCapture === 'boolean' && regex.type === 'regex')) {
+            throw new Error('type error');
+        }
+        return {
+            type     : 'pattern',
+            pattype  : 'group',
+            isCapture: isCapture,
+            regex    : regex
+        };
+    }
+
+    function anchor(a) {
+        if(!(a in ANCHORS)) {
+            throw new Error('value error -- bad anchor');
+        }
+        return {
+            type   : 'pattern',
+            pattype: 'anchor',
+            value  : ANCHORS[a]
+        };
+    }
+    
+    function char(chr) {
+        if ( !isChar(chr) ) {
+            throw new Error('type error');
+        }
+        return {
+            type   : 'pattern',
+            pattype: 'char',
+            value  : chr
+        };
+    }
+
+    function dot() {
+        return {
+            type   : 'pattern',
+            pattype: 'dot'
+        };
+    }
+
+    function backref(int) {
+        if(typeof int !== 'number') {
+            throw new Error('type error');
+        }
+        return {
+            type   : 'pattern',
+            pattype: 'backref',
+            value  : int
+        };
+    }
+
+    function myClass(chr) {
+        if(!(chr in CLASSES)) {
+            throw new Error('value error');
+        }
+        return {
+            type   : 'pattern',
+            pattype: 'class',
+            value  : CLASSES[chr]
         };
     };
 
+    function range(low, high) {
+        if(!(isChar(low) && isChar(high))) {
+            throw new Error('type error');
+        }
+        return {
+            type   : 'pattern',
+            pattype: 'range',
+            low    : low,
+            high   : high
+        };
+    }
+    
     function quantifier(low, high, isGreedy) {
         if(typeof low !== 'number' && low !== null) {
             throw new Error('type error');
@@ -144,24 +145,38 @@ define(function () {
             throw new Error('type error');
         }
         return {
-            asttype:  'quantifier',
-            low    :  low,
-            high   :  high,
-            isGreedy: isGreedy
+            type     :  'quantifier',
+            low      :  low,
+            high     :  high,
+            isGreedy :  isGreedy
         };
     }
 
+/* Regex       --  (Pattern, Quantifier)
+   Pattern
+     Sequence  --  [Regex]
+     Any       --  (Bool, [Regex])
+     Group     --  (Bool, Regex)
+     Anchor    --  character
+     Char      --  character
+     Dot       -- 
+     Backref   --  Int
+     Class     --  character
+     Range     --  (character, character)
+   Quantifier  --  (Int, Int, Bool)
+*/
 
     return {
         'regex'   :  regex,
         
+        sequence  :  sequence,
+        'any'     :  any,
+        'group'   :  group,
+        'anchor'  :  anchor,        
         'char'    :  char,
         'dot'     :  dot,
         'backref' :  backref,
-        'anchor'  :  anchor,
-        
-        'any'     :  any,
-        'group'   :  group,
+        'class'   :  myClass,
         'range'   :  range,
         
         quantifier:  quantifier
