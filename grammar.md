@@ -24,7 +24,7 @@ Problem:  the order in which sub-rules of 'Pattern' are tried may be significant
     
     Sequence    :=   Single({2,})
     
-    Group       :=   opengroup  Regex(?)  closegroup
+    Group       :=   opengroup  Regex  closegroup
     
     Anchor      :=   anchor  |  circumflex  |  dollarsign    
     

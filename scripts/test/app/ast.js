@@ -34,5 +34,15 @@ define(["app/ast"], function (AST) {
                 AST.range('a', 13, one);
             });
         });
+        
+        test("anchor", function() {
+            propEqual({type: 'pattern', pattype: 'anchor', value: 'not word boundary'},
+                AST.anchor('not word boundary'));
+        });
+        
+        test("charclass", function() {
+            propEqual({type: 'pattern', pattype: 'charclass', value: 'not word character'},
+                AST.charclass('not word character'));
+        });
     };
 });

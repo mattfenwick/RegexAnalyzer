@@ -11,21 +11,19 @@ define(function () {
     }
 
     var ANCHORS = {
-        'a':  'start of input',
-        'z':  'end of input',
-        'b':  'word boundary',
-        'B':  'not a word boundary',
-        '^':  'start of input',
-        '$':  'end of input'
+        'start of input'   :  1,
+        'end of input'     :  1,
+        'word boundary'    :  1,
+        'not word boundary':  1
     };
     
     var CLASSES = {
-        'd': 'digit',
-        'D': 'non-digit',
-        's': 'whitespace',
-        'S': 'non-whitespace',
-        'w': 'word character',
-        'W': 'non-word character'
+        'digit'             :  1,
+        'not digit'         :  1,
+        'whitespace'        :  1,
+        'not whitespace'    :  1,
+        'word character'    :  1,
+        'not word character':  1
     };
 
     function regex(pattern, quantifier) {
@@ -78,7 +76,7 @@ define(function () {
         return {
             type   : 'pattern',
             pattype: 'anchor',
-            value  : ANCHORS[a]
+            value  : a
         };
     }
     
@@ -111,14 +109,14 @@ define(function () {
         };
     }
 
-    function myClass(chr) {
-        if(!(chr in CLASSES)) {
+    function charclass(c) {
+        if(!(c in CLASSES)) {
             throw new Error('value error');
         }
         return {
             type   : 'pattern',
-            pattype: 'class',
-            value  : CLASSES[chr]
+            pattype: 'charclass',
+            value  : c
         };
     };
 
@@ -167,19 +165,19 @@ define(function () {
 */
 
     return {
-        'regex'   :  regex,
+        'regex'     :  regex,
         
-        sequence  :  sequence,
-        'any'     :  any,
-        'group'   :  group,
-        'anchor'  :  anchor,        
-        'char'    :  char,
-        'dot'     :  dot,
-        'backref' :  backref,
-        'class'   :  myClass,
-        'range'   :  range,
+        'sequence'  :  sequence,
+        'any'       :  any,
+        'group'     :  group,
+        'anchor'    :  anchor,        
+        'char'      :  char,
+        'dot'       :  dot,
+        'backref'   :  backref,
+        'charclass' :  charclass,
+        'range'     :  range,
         
-        quantifier:  quantifier
+        'quantifier':  quantifier
     };
 
 });
