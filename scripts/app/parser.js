@@ -86,40 +86,30 @@ define(["libs/maybeerror", "libs/parsercombs", "app/ast", "app/tokens"], functio
         qComplex.plus(qSimple),
         tokentype('qmark').optional(true));
 
-    var regex = new PC(function() {}); // a 'forward declaration'
+    var regex = new PC(function() {}), // a 'forward declaration'
+        sequence = new PC(function() {}),
+        single = new PC(function() {});
 
     var range = PC.app(
             function(low, _, high) {return AST.range(low.value, high.value);},
             char,
             tokentype('dash'),
             char),
-        any1 = PC.app(function(_1, negation, patterns, _2) {
+        any2 = PC.app(function(_1, negation, patterns, _2) {
                 var isNegated = negation === false ? false : true,
                     regexes = patterns.map(function(p) {return AST.regex(p, QONE);});
                 return AST.any(isNegated, regexes);
             },
             tokentype("openany"),
             tokentype("circumflex").optional(false),
-            PC.any([char, charclass, range]).many1(),
+            PC.any([range, char, charclass]).many1(),
             tokentype("closeany")),
-        any2 = PC.app(function(r, rs) {
-                return AST.any(false, [r].concat(rs));
+        s_or_s = sequence.plus(single),
+        any1 = PC.app(function(r, rs) {
+                return AST.regex(AST.any(false, [r].concat(rs)), QONE);
             }, 
-            regex, 
-            tokentype('alt').seq2R(regex).many1()),
-        any = any1.plus(any2);
-    
-/*
-    Regex       :=   Pattern  Quantifier(?)
-    
-    Pattern     :=   Single  |  Sequence
-    
-    Single      :=   Any  |  Group  |  Anchor  |  Char  |  dot  |  backref  |  class
-    
-    Sequence    :=   Single({2,})
-    
-    Group       :=   opengroup  Regex  closegroup
-*/
+            s_or_s, 
+            tokentype('alt').seq2R(s_or_s).many1());
         
     var group = PC.app(
             function(op, r, _) {
@@ -132,14 +122,24 @@ define(["libs/maybeerror", "libs/parsercombs", "app/ast", "app/tokens"], functio
             },
             tokentype('opengroup'),
             regex,
-            tokentype('closegroup')),
-        single = PC.any([any, group, anchor, char, dot, backref, charclass]),
-        sequence = single.many1().check(function(rs) {
+            tokentype('closegroup'));
+
+    single.parse = PC.app(
+        AST.regex,
+        PC.any([any2, group, anchor, char, dot, backref, charclass]),
+        quantifier.optional(QONE)).parse;
+
+    sequence.parse = single
+        .many1()
+        .check(function(rs) {
             return rs.length >= 2;
-        }),
-        pattern = single.plus(sequence);
+        })
+        .fmap(function(rs) {
+            return AST.regex(AST.sequence(rs), QONE);
+        })
+        .parse;
         
-    regex.parse = PC.app(AST.regex, pattern, quantifier.optional(QONE)).parse;
+    regex.parse = any1.plus(sequence).plus(single).parse;
         
     
     return {
@@ -150,11 +150,15 @@ define(["libs/maybeerror", "libs/parsercombs", "app/ast", "app/tokens"], functio
         'dot'      :  dot,
         
         quantifier : quantifier,
-
-        'range'    :  range,
-        'any'      :  any,
         
         'group'    :  group,
+        'sequence' :  sequence,
+
+        'range'    :  range,
+        'any1'     :  any1,
+        'any2'     :  any2,
+        
+        'regex'    :  regex
     };
 
 });
