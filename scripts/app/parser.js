@@ -42,13 +42,28 @@ define(["libs/maybeerror", "libs/parsercombs", "app/ast", "app/tokens"], functio
         return AST.charclass(CLASSES[t.value]);
     }
     
+    var ESCAPES = {
+        'n': '\n',
+        't': '\t',
+        'r': '\r',
+        'f': '\f'
+    };
+    
+    // wow, this is so ugly due to the {value: ...} stuff
+    function escapeToChar(e) {
+        if(e.value in ESCAPES) {
+            return {value: ESCAPES[e.value]};
+        }
+        return {value: e.value};
+    }        
+    
     var anchor = tokentype('anchor')
             .plus(tokentype('circumflex'))
             .plus(tokentype('dollarsign'))
             .fmap(anchorAction),
         char = tokentype('char')
             .plus(tokentype('digit'))
-            .plus(tokentype('escape'))
+            .plus(tokentype('escape').fmap(escapeToChar))
             .fmap(function(t) {return AST.char(t.value);}),
         dot = tokentype('dot')
             .seq2R(PC.pure(AST.dot())),

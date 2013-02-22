@@ -10,6 +10,7 @@ define(["app/tokens", "app/ast", "libs/maybeerror", "libs/parsercombs", "app/par
             tca  = T('closeany', ']'),
             tanc = T('anchor', 'b'),
             tchr = T('char', '\n'),
+            tesc = T('escape', 'n'),
             tbr  = T('backref', '4'),
             tcc  = T('class', 'S'),
             tocg = T('opengroup', '('),
@@ -39,6 +40,8 @@ define(["app/tokens", "app/ast", "libs/maybeerror", "libs/parsercombs", "app/par
                       'anchor');
             propEqual(good([tanc], AST.char('\n')), 
                 P.char.parse([tchr, tanc]), 'char');
+            propEqual(good([tanc], AST.char('\n')),
+                P.char.parse([tesc, tanc]), 'char from escape');
             propEqual(good([tchr], AST.backref(4)),
                 P.backref.parse([tbr, tchr]),
                 'backref');
@@ -147,7 +150,7 @@ define(["app/tokens", "app/ast", "libs/maybeerror", "libs/parsercombs", "app/par
         });
         
         test("regex", function() {
-            ok(0, "AST is far too complicated -- need to simplify, reduce unnecessary nesting");
+            ok(0, "AST may be far too complicated -- need to simplify, reduce unnecessary nesting");
         });
         
     };
