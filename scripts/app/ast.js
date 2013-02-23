@@ -111,7 +111,7 @@ define(function () {
 
     function charclass(c) {
         if(!(c in CLASSES)) {
-            throw new Error('value error');
+            throw new Error('value error -- ' + c);
         }
         return {
             type   : 'pattern',

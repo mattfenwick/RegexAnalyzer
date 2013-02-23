@@ -6,7 +6,8 @@ var NEW_TESTS = [
     "test/app/tokenizer",
     "test/app/ast",
     "test/app/parser",
-    'test/app/ast_to_jstree',
+    "test/app/ast_to_jstree",
+    "test/app/parser_combined"
 ];
 
 require(["test/helper"], function(helper) {
