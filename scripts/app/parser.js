@@ -1,31 +1,63 @@
-define(["libs/maybeerror", "libs/parsercombs", "app/ast", "app/tokens"], function (ME, PC, AST, TS) {
+define(["libs/maybeerror", "libs/parsercombs", "app/ast"], function (ME, PC, AST) {
     "use strict";
     
-    var QONE = AST.quantifier(1, 1, true);
-
-    function tokentype(type) {
-        return PC.satisfy(
-            function(t) {
-                return t.tokentype === type;
-            });
+    var QONE = AST.quantifier(1, 1, true),
+        digit = PC.item
+            .check(function(c) {return c.match(/^\d/);}),
+        num = digit.many1()
+            .fmap(function(ds) {return parseInt(ds.join(''), 10);}),
+        slash = PC.literal('\\');
+        
+    function matchThen(p, value) {
+        return p.seq2R(PC.pure(value));
     }
-
+    
+    
     var ANCHORS = {
         'a':  'start of input',
         'z':  'end of input',
         'b':  'word boundary',
-        'B':  'not word boundary',
-        '^':  'start of input',
-        '$':  'end of input'
+        'B':  'not word boundary'
     };
     
     function anchorAction(t) {
-        if(!(t.value in ANCHORS)) {
-            throw new Error('unrecognized anchor: ' + t.value);
+        if(t in ANCHORS) {
+            return PC.pure(ANCHORS[t]);
         }
-        return AST.anchor(ANCHORS[t.value]);
-    }
+        return PC.zero;
+    }     
+    
+    var anchor = slash.seq2R(PC.item.bind(anchorAction))
+            .plus(matchThen(PC.literal('^'), 'start of input'))
+            .plus(matchThen(PC.literal('$'), 'end of input'))
+            .fmap(AST.anchor);
+    
+    // convert string to object where each key is a char from the string
+    var SPECIALS = "^$+*?|,.{}[](:)-=!<>\\".split('').reduce(function(b, n) {b[n] = 1; return b;}, {});
 
+    var ESCAPES = {
+        'n': '\n',
+        't': '\t',
+        'r': '\r',
+        'f': '\f'
+    };
+    
+    function escapeAction(c) {
+        if(c in SPECIALS) {
+            return PC.pure(c);
+        } else if(c in ESCAPES) {
+            return PC.pure(ESCAPES[c]);
+        }
+        return PC.zero;
+    }
+    
+    var normalChar = PC.item.check(function(c) {return !(c in SPECIALS);})
+            .plus(slash.seq2R(PC.item.bind(escapeAction))),
+        char = normalChar
+            .fmap(AST.char);
+    
+    var dot = matchThen(PC.literal('.'), AST.dot());
+    
     var CLASSES = {
         'd': 'digit',
         'D': 'not digit',
@@ -35,109 +67,74 @@ define(["libs/maybeerror", "libs/parsercombs", "app/ast", "app/tokens"], functio
         'W': 'not word character'
     };
 
-    function classAction(t) {
-        if(!(t.value in CLASSES)) {
-            throw new Error('unrecognized class: ' + t.value);
+    function classAction(c) {
+        if(c in CLASSES) {
+            return PC.pure(CLASSES[c]);
         }
-        return AST.charclass(CLASSES[t.value]);
+        return PC.zero;
     }
     
-    var ESCAPES = {
-        'n': '\n',
-        't': '\t',
-        'r': '\r',
-        'f': '\f'
-    };
+    var charclass = slash
+            .seq2R(PC.item.bind(classAction))
+            .fmap(AST.charclass);
+
+    var backref = slash
+            .seq2R(num)
+            .fmap(AST.backref);
     
-    // wow, this is so ugly due to the {value: ...} stuff
-    function escapeToChar(e) {
-        if(e.value in ESCAPES) {
-            return {value: ESCAPES[e.value]};
-        }
-        return {value: e.value};
-    }        
-    
-    var anchor = tokentype('anchor')
-            .plus(tokentype('circumflex'))
-            .plus(tokentype('dollarsign'))
-            .fmap(anchorAction),
-        char = tokentype('char')
-            .plus(tokentype('digit'))
-            .plus(tokentype('escape').fmap(escapeToChar))
-            .fmap(function(t) {return AST.char(t.value);}),
-        dot = tokentype('dot')
-            .seq2R(PC.pure(AST.dot())),
-        backref = tokentype('backref')
-            .fmap(function(t) {return AST.backref(parseInt(t.value, 10));}),
-        charclass = tokentype('class')
-            .fmap(classAction);
-    
-    var digit = tokentype('digit')
-            .fmap(function(t) {return t.value;}),
-        num = digit.many1()
-            .fmap(function(ds) {return parseInt(ds.join(''), 10);}),
-        qAmt1 = PC.app(function(low, _, high) {return [low, high];},
+
+    // quantifiers 
+    var qAmt1 = PC.app(function(low, _, high) {return [low, high];},
             num.optional(0),
-            tokentype('comma'),
+            PC.literal(','),
             num.optional(null)),
         qAmt2 = num.fmap(function(n) {return [n, n];}),
-        qComplex = tokentype('openq')
+        qComplex = PC.literal('{')
             .seq2R(qAmt1.plus(qAmt2))
-            .seq2L(tokentype('closeq'));
+            .seq2L(PC.literal('}'));
     
-    var plus = tokentype('plus')
-            .seq2R(PC.pure([1, null])),
-        star = tokentype('star')
-            .seq2R(PC.pure([0, null])),
-        qmark = tokentype('qmark')
-            .seq2R(PC.pure([0, 1])),
+    var plus = matchThen(PC.literal('+'), [1, null]),
+        star = matchThen(PC.literal('*'), [0, null]),
+        qmark = matchThen(PC.literal('?'), [0, 1]),
         qSimple = PC.any([plus, star, qmark]);
         
     var quantifier = PC.app(
-        function(lohi, greed) {
-            var isGreedy = (greed === true) ? true : false; // looks weird but avoids coercions
+        function(lohi, isGreedy) {
             return AST.quantifier(lohi[0], lohi[1], isGreedy);
         },
         qComplex.plus(qSimple),
-        tokentype('qmark').optional(true));
+        matchThen(PC.literal('?'), false).optional(true));
+    // done with quantifiers
 
-    var regex = new PC(function() {}), // a 'forward declaration'
+    var regex = new PC(function() {}),    // forward declarations
         sequence = new PC(function() {}),
         single = new PC(function() {});
 
     var range = PC.app(
-            function(low, _, high) {return AST.range(low.value, high.value);},
-            char,
-            tokentype('dash'),
-            char),
-        any2 = PC.app(function(_1, negation, patterns, _2) {
-                var isNegated = negation === false ? false : true,
-                    regexes = patterns.map(function(p) {return AST.regex(p, QONE);});
+            AST.range,
+            normalChar,
+            PC.literal('-').seq2R(normalChar)),
+        any2 = PC.app(function(_1, isNegated, regexes, _2) {
                 return AST.any(isNegated, regexes);
             },
-            tokentype("openany"),
-            tokentype("circumflex").optional(false),
-            PC.any([range, char, charclass]).many1(),
-            tokentype("closeany")),
-        s_or_s = sequence.plus(single),
+            PC.literal('['),
+            matchThen(PC.literal('^'), true).optional(false),
+            PC.any([range, char, charclass]).fmap(function(p) {return AST.regex(p, QONE);}).many1(),
+            PC.literal(']')),
+        seq_or_single = sequence.plus(single),
         any1 = PC.app(function(r, rs) {
                 return AST.regex(AST.any(false, [r].concat(rs)), QONE);
             }, 
-            s_or_s, 
-            tokentype('alt').seq2R(s_or_s).many1());
+            seq_or_single, 
+            PC.literal('|').seq2R(seq_or_single).many1());
         
-    var group = PC.app(
-            function(op, r, _) {
-                if(op.value === '(') {
-                    return AST.group(true, r);
-                } else if(op.value === '(?:') {
-                    return AST.group(false, r);
-                }
-                throw new Error('unrecognized open group: ' + op.value);
-            },
-            tokentype('opengroup'),
-            regex,
-            tokentype('closegroup'));
+    var nonCapture = matchThen(PC.string('(?:'), false),
+        capture = matchThen(PC.literal('('), true),
+        closeGroup = PC.literal(')'),
+        group = PC.app(
+            AST.group,
+            nonCapture.plus(capture),
+            regex.seq2L(closeGroup));
 
     single.parse = PC.app(
         AST.regex,

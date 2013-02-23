@@ -1,28 +1,19 @@
 var imports = [
     "app/parser",
     "app/ast_to_jstree",
-    "app/tokenizer",
     "gui/astview",
 ];
 
-require(imports, function(parser, a2jst, regs, astview, tokenview) {
+require(imports, function(parser, a2jst, astview) {
 
     var ast = new astview($("#ast"));
 
     $("#parse").click(function() {
         var text = $("#input").val(),
-            result = regs.scanner(text);
+            result = parser.regex.parse(text);
         if(result.status === 'success') {
-            var goodTokens = result.value;
-            var tree = parser.regex.parse(goodTokens);
-            if(tree.status === 'success') { // what about if there's some tokens unconsumed?
-                var conned = a2jst(tree.value.result);
-                ast.drawAST(conned);
-            } else {
-                alert('error occurred!');
-                var e = tree.value;
-                ast.error(e.rule, e.meta.line, e.meta.column);
-            }
+            var conned = a2jst(result.value.result);
+            ast.drawAST(conned);
         } else if(result.status === 'error') {
             ast.error();
         } else {
