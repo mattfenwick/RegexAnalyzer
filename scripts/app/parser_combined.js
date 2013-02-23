@@ -7,6 +7,10 @@ define(["libs/maybeerror", "libs/parsercombs", "app/ast"], function (ME, PC, AST
         num = digit.many1()
             .fmap(function(ds) {return parseInt(ds.join(''), 10);}),
         slash = PC.literal('\\');
+        
+    function matchThen(p, value) {
+        return p.seq2R(PC.pure(value));
+    }
     
     
     var ANCHORS = {
@@ -24,8 +28,8 @@ define(["libs/maybeerror", "libs/parsercombs", "app/ast"], function (ME, PC, AST
     }     
     
     var anchor = slash.seq2R(PC.item.bind(anchorAction))
-            .plus(PC.literal('^').seq2R(PC.pure('start of input')))
-            .plus(PC.literal('$').seq2R(PC.pure('end of input')))
+            .plus(matchThen(PC.literal('^'), 'start of input'))
+            .plus(matchThen(PC.literal('$'), 'end of input'))
             .fmap(AST.anchor);
     
     // convert string to object where each key is a char from the string
@@ -47,12 +51,12 @@ define(["libs/maybeerror", "libs/parsercombs", "app/ast"], function (ME, PC, AST
         return PC.zero;
     }
     
-    var char = PC.item.check(function(c) {return !(c in SPECIALS);})
-            .plus(slash.seq2R(PC.item.bind(escapeAction)))
+    var normalChar = PC.item.check(function(c) {return !(c in SPECIALS);})
+            .plus(slash.seq2R(PC.item.bind(escapeAction))),
+        char = normalChar
             .fmap(AST.char);
     
-    var dot = PC.literal('.')
-            .seq2R(PC.pure(AST.dot()));
+    var dot = matchThen(PC.literal('.'), AST.dot());
     
     var CLASSES = {
         'd': 'digit',
@@ -89,36 +93,32 @@ define(["libs/maybeerror", "libs/parsercombs", "app/ast"], function (ME, PC, AST
             .seq2R(qAmt1.plus(qAmt2))
             .seq2L(PC.literal('}'));
     
-    var plus = PC.literal('+')
-            .seq2R(PC.pure([1, null])),
-        star = PC.literal('*')
-            .seq2R(PC.pure([0, null])),
-        qmark = PC.literal('?')
-            .seq2R(PC.pure([0, 1])),
+    var plus = matchThen(PC.literal('+'), [1, null]),
+        star = matchThen(PC.literal('*'), [0, null]),
+        qmark = matchThen(PC.literal('?'), [0, 1]),
         qSimple = PC.any([plus, star, qmark]);
         
     var quantifier = PC.app(
-        function(lohi, greed) {
-            var isGreedy = (greed === true) ? true : false; // looks weird but avoids coercions
+        function(lohi, isGreedy) {
             return AST.quantifier(lohi[0], lohi[1], isGreedy);
         },
         qComplex.plus(qSimple),
-        PC.literal('?').optional(true));
+        matchThen(PC.literal('?'), false).optional(true));
     // done with quantifiers
 
-    var regex = new PC(function() {}), // a 'forward declaration'
+    var regex = new PC(function() {}),    // forward declarations
         sequence = new PC(function() {}),
         single = new PC(function() {});
 
     var range = PC.app(
             AST.range,
-            char,
-            PC.literal('-').seq2R(char)),
+            normalChar,
+            PC.literal('-').seq2R(normalChar)),
         any2 = PC.app(function(_1, isNegated, regexes, _2) {
                 return AST.any(isNegated, regexes);
             },
             PC.literal('['),
-            PC.literal('^').seq2R(PC.pure(true)).optional(false),
+            matchThen(PC.literal('^'), true).optional(false),
             PC.any([range, char, charclass]).fmap(function(p) {return AST.regex(p, QONE);}).many1(),
             PC.literal(']')),
         seq_or_single = sequence.plus(single),
@@ -128,16 +128,13 @@ define(["libs/maybeerror", "libs/parsercombs", "app/ast"], function (ME, PC, AST
             seq_or_single, 
             PC.literal('|').seq2R(seq_or_single).many1());
         
-    var group = PC.app(
-            function(op, r, _) {
-                if(op.value === '(?:') {
-                    return AST.group(false, r);
-                }
-                return AST.group(true, r);
-            },
-            PC.literal('(?:').plus(PC.literal('(')),
-            regex,
-            PC.literal(')'));
+    var nonCapture = matchThen(PC.string('(?:'), false),
+        capture = matchThen(PC.literal('('), true),
+        closeGroup = PC.literal(')'),
+        group = PC.app(
+            AST.group,
+            nonCapture.plus(capture),
+            regex.seq2L(closeGroup));
 
     single.parse = PC.app(
         AST.regex,

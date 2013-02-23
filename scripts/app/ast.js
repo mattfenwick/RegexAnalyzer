@@ -122,7 +122,7 @@ define(function () {
 
     function range(low, high) {
         if(!(isChar(low) && isChar(high))) {
-            throw new Error('type error');
+            throw new Error('type error -- ' + JSON.stringify([low, high]));
         }
         return {
             type   : 'pattern',
